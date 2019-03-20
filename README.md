@@ -1,6 +1,6 @@
 # push
 
-Installation des dépendances:
+Installation des dépendances :
 
 > npm install
 
