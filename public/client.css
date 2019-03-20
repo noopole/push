@@ -1,0 +1,32 @@
+:host {
+    background-color:lightskyblue    ;
+    display: block ;
+    margin: 10px ;
+    padding: 10px ;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif ;
+}
+
+h1 {
+    font-size: 15px ;
+}
+
+section {
+    border: 1px solid gray ;
+}
+
+ul {
+    margin: 0
+}
+
+.channel {
+    display: inline ;
+    border: 1px solid lightgray ;
+}
+
+li {
+    list-style-type: none;
+}
+
+li.selected {
+    font-weight: bold ;
+}
