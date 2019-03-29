@@ -9,7 +9,7 @@ var server = http.createServer(function(request, response) {
     response.end();
 });
 
-server.listen( process.env.WSS_PORT, () =>
+server.listen( process.env.WSS_PORT || 8080, () =>
     console.log(  `${new Date().toLocaleTimeString()} Serveur WebSocket à l'écoute sur le port ${server.address().port}` )
 )
 
