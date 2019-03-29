@@ -1,4 +1,5 @@
 'use strict'
+require( 'dotenv').config()
 var WebSocketServer = require('websocket').server;
 var http = require('http');
 
@@ -7,9 +8,10 @@ var server = http.createServer(function(request, response) {
     response.writeHead(404);
     response.end();
 });
-server.listen(8080, function() {
-    console.log((new Date()) + ' Server is listening on port 8080');
-});
+
+server.listen( process.env.WSS_PORT, () =>
+    console.log(  `${new Date().toLocaleTimeString()} Serveur WebSocket à l'écoute sur le port ${server.address().port}` )
+)
 
 //identifiant unique de la connexion
 var idcount = 0
@@ -61,7 +63,7 @@ wsServer.on( 'request', function(request) {
                     channels.set( command.channel, { connection: connection.id, subscribers: new Set } )
                     connections.get( connection.id ).channel = command.channel
                     subscribers.forEach( subscriber => {
-                        connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add', channel: command.channel } ) ) 
+                        connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add_channel', channel: command.channel } ) ) 
                     } )
                     break
 
@@ -90,16 +92,33 @@ wsServer.on( 'request', function(request) {
                     break
 
                 case 'unsubscribe':
+                    console.log( 'Désabonnement à %s', command.channel )
+                    var name = connections.get( connection.id ).client 
+                    //Suppression de la liste des abonnés du canal
+                    channels.get( command.channel ).subscribers.delete( name )
+                    //Suppresion de la liste des canaux de l'abonné
+                    subscribers.get( name ).subscriptions.delete( command.channel )
                     break
 
                 case 'client': 
                     name = command.name || 'Anonyme_' + connection.id
                     console.log( 'Abonné %s connecté', name )
-                    subscribers.set( name, { subscriptions: new Set, connection: connection.id } )
                     connections.get( connection.id ).client = name
+                    //Indiquer au client tous les canaux déjà existants
                     for ( let ch of channels.keys() ) {
-                        connection.send( JSON.stringify( { action: 'add', channel: ch } ) )
+                        connection.send( JSON.stringify( { action: 'add_channel', channel: ch } ) )
                     }
+                    //Indiquer au client tous les utilisateurs déjà connectés
+                    for ( let user of subscribers.keys() ) {
+                        connection.send( JSON.stringify( { action: 'add_user', name: user } ) )
+                    } 
+                    //Prévenir tous les utilisateurs du nouvel arrivant
+                    subscribers.forEach( subscriber => {
+                        connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add_user', name: name } ) ) 
+                    } )
+                    //Ajouter l'utilisateur à la liste des utilisateurs
+                    subscribers.set( name, { subscriptions: new Set, connection: connection.id } )
+
                     break
 
                 default:
@@ -115,22 +134,28 @@ wsServer.on( 'request', function(request) {
         //Si c'est un canal qui est coupé
         let channel = connections.get(connection.id).channel
         if ( channel ) {
-            //Désabonnement des aboonés
+            //Désabonnement des abonnés
             subscribers.forEach( s => {
-                connections.get( s.connection ).connection.send( JSON.stringify( { action: 'remove', channel: channel } ) ) 
+                connections.get( s.connection ).connection.send( JSON.stringify( { action: 'remove_channel', channel: channel } ) ) 
                 s.subscriptions.delete( channel )      
             } )
             let res = channels.delete( channel )
             console.log( 'Fermeture du Canal %s', channel, res? 'OK' : 'Echec' )
         }
 
-        //Si c'est un client qui est coupé
-        var client = connections.get( connection.id ).client
+        //Si c'est un client qui est parti
+        let client = connections.get( connection.id ).client
         if ( client ) {
+            //Désabonnement de tous les canaux
             let subscriptions = subscribers.get( client ).subscriptions
             subscriptions.forEach( s => channels.get( s ).subscribers.delete( client ) )
-            let res = subscribers.delete( client)            
+            //Suppression du client
+            let res = subscribers.delete( client )            
             console.log( 'Déconnexion de l\'abonné %s', client, res? 'OK' : 'Echec' )
+            //Avertissement des autres clients
+            subscribers.forEach( s =>
+                connections.get( s.connection ).connection.send( JSON.stringify( { action: 'remove_user', name: client } ) )
+            ) 
         }
 
     } )

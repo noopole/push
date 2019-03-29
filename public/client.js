@@ -22,8 +22,11 @@ customElements.define( 'push-client', class extends HTMLElement {
 
         list.onclick = ev => {
             if ( ev.target.localName === 'li' ) {
-                ev.target.classList.add( 'selected' ) 
-                client.send( JSON.stringify( { action: 'subscribe', channel: ev.target.textContent } ) )
+                let selected = ev.target.classList.toggle( 'selected' ) 
+                client.send( JSON.stringify( { 
+                    action: selected ? 'subscribe' : "unsubscribe", 
+                    channel: ev.target.textContent 
+                } ) )
             }
         }
 
@@ -40,7 +43,7 @@ customElements.define( 'push-client', class extends HTMLElement {
                 console.log( message )
                 switch ( message.action ) {
 
-                    case 'add':
+                    case 'add_channel':
                         li = document.createElement( 'li' )
                         li.textContent = message.channel
                         list.appendChild( li )
@@ -52,11 +55,23 @@ customElements.define( 'push-client', class extends HTMLElement {
                         msg.appendChild( li )
                         break 
 
-                    case 'remove':
+                    case 'remove_channel':
                         let lis = list.querySelectorAll( 'li' )
                         lis.forEach( li => li.textContent == message.channel && list.removeChild( li ) )
                         break
 
+                    case 'add_user':
+                        li = document.createElement( 'li' )
+                        li.textContent = `@${message.name} connecté`
+                        msg.appendChild( li )
+                        break
+
+                    case 'remove_user':
+                        li = document.createElement( 'li' )
+                        li.textContent = `@${message.name} déconnecté`
+                        msg.appendChild( li )
+                        break
+                    
                     default:
                         console.warn( 'INCONNU' )
                 }
