@@ -12,12 +12,13 @@ customElements.define( 'push-client', class extends HTMLElement {
             <section>Message reçus :
                 <ul id="msg">
                 </ul>
-            </section
-            
+            </section>
+            <button class="x" title="Fermer">X</button>
         `
         var client = new WebSocket( 'ws://localhost:8080/' )
         var list = shadow.querySelector( '#list' )
         var msg = shadow.querySelector( '#msg' )
+        var close = shadow.querySelector( 'button' )
 
         list.onclick = ev => {
             if ( ev.target.localName === 'li' ) {
@@ -50,9 +51,22 @@ customElements.define( 'push-client', class extends HTMLElement {
                         li.textContent = `#${message.channel} : ${message.message}` 
                         msg.appendChild( li )
                         break 
-                    
+
+                    case 'remove':
+                        let lis = list.querySelectorAll( 'li' )
+                        lis.forEach( li => li.textContent == message.channel && list.removeChild( li ) )
+                        break
+
+                    default:
+                        console.warn( 'INCONNU' )
                 }
             }
+        }
+
+        close.onclick = () => {
+            console.log( "fermer le canal" )
+            client.close() 
+            this.parentElement.removeChild( this )
         }
     }
 })

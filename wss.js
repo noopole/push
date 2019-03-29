@@ -11,6 +11,9 @@ server.listen(8080, function() {
     console.log((new Date()) + ' Server is listening on port 8080');
 });
 
+//identifiant unique de la connexion
+var idcount = 0
+
 var wsServer = new WebSocketServer({
     httpServer: server,
     // You should not use autoAcceptConnections for production
@@ -26,9 +29,13 @@ function originIsAllowed(origin) {
   return true;
 }
 
-var channels = []
-var subscribers = []
-var subscriptions = {}
+//Canaux
+var channels = new Map      // Canaux par nom de canal
+var subscribers = new Map   // Abonnés par nom d'abonné
+var connections = new Map   // Connexion par id de connexion
+//Canal     // { connection (id), subscribers }      
+//Abonné    // { connection (id), subscriptions }
+//Connexion // { connection, channel, subscriber }
 
 wsServer.on( 'request', function(request) {
     if (!originIsAllowed(request.origin)) {
@@ -39,7 +46,9 @@ wsServer.on( 'request', function(request) {
     }
     
     var connection = request.accept( null, request.origin )
-    console.log( ( new Date().toLocaleTimeString() ) + ' Connexion acceptée.' )
+    connection.id = ++idcount
+    connections.set( connection.id, { connection: connection } )
+    console.log( ( new Date().toLocaleTimeString() ) + ' Connexion acceptée. Id=%i', connection.id )
 
     connection.on( 'message', function(message) {
         if (message.type === 'utf8') {
@@ -48,36 +57,50 @@ wsServer.on( 'request', function(request) {
             switch ( command.action ) {
 
                 case 'create_channel':
-                    console.log( 'create %s', command.channel )
-                    channels.push( command.channel )
-                    for( let s of subscribers ) {
-                        s.send( JSON.stringify( { action: 'add', channel: command.channel } ) ) 
-                    }
+                    console.log( 'Cnx %i : Création du canal %s', connection.id, command.channel )
+                    channels.set( command.channel, { connection: connection.id, subscribers: new Set } )
+                    connections.get( connection.id ).channel = command.channel
+                    subscribers.forEach( subscriber => {
+                        connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add', channel: command.channel } ) ) 
+                    } )
                     break
 
                 case 'push':
-                    console.log( 'push %s', command.message )
-                    if ( !subscriptions[command.channel] ) 
+                    console.log( 'push %s vers %s', command.message, command.channel )
+                    let channel = channels.get( command.channel )
+                    if ( !channel ) 
+                        console.info( 'Canal inconnu' )
+                    if ( channel.subscribers.size === 0 ) 
                         console.info( 'Pas d\'abonné' )
-                    else 
-                        for( let s of subscriptions[command.channel] ) {   
-                            s.send( JSON.stringify( { action: 'write', message: command.message, channel: command.channel } ) ) 
-                        }
+                    else { 
+                        channel.subscribers.forEach( s =>  { 
+                            console.log( 'Abonné %o', s )
+                            connections.get( subscribers.get( s ).connection ).connection.send( JSON.stringify( { action: 'write', message: command.message, channel: command.channel } ) ) 
+                        } ) 
+                    }
                     break
 
                 case 'subscribe':
                     console.log( 'Abonnement à %s', command.channel )
-                    if ( ! subscriptions[command.channel] )
-                        subscriptions[command.channel] = []
-                    subscriptions[command.channel].push( connection )
+                    var name = connections.get( connection.id ).client 
+                    //Ajout à la liste des abonnés du canal
+                    channels.get( command.channel ).subscribers.add( name )
+                    //Ajout à la liste des canaux de l'abonné
+                    subscribers.get( name ).subscriptions.add( command.channel )
+                    break
+
+                case 'unsubscribe':
                     break
 
                 case 'client': 
-                    console.log( 'Abonné connecté' )
-                    subscribers.push( connection )
-                    for ( let ch of channels ) {
+                    name = command.name || 'Anonyme_' + connection.id
+                    console.log( 'Abonné %s connecté', name )
+                    subscribers.set( name, { subscriptions: new Set, connection: connection.id } )
+                    connections.get( connection.id ).client = name
+                    for ( let ch of channels.keys() ) {
                         connection.send( JSON.stringify( { action: 'add', channel: ch } ) )
                     }
+                    break
 
                 default:
                     console.log( 'INCONNU' ) 
@@ -86,7 +109,29 @@ wsServer.on( 'request', function(request) {
     } )
 
     
-    connection.on('close', function(reasonCode, description) {
-        console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+    connection.on( 'close', ( reasonCode, description ) => {
+        console.log( ( new Date().toLocaleTimeString() ) + ' Connexion %i fermée [%s=%s]', connection.id, reasonCode, description )
+
+        //Si c'est un canal qui est coupé
+        let channel = connections.get(connection.id).channel
+        if ( channel ) {
+            //Désabonnement des aboonés
+            subscribers.forEach( s => {
+                connections.get( s.connection ).connection.send( JSON.stringify( { action: 'remove', channel: channel } ) ) 
+                s.subscriptions.delete( channel )      
+            } )
+            let res = channels.delete( channel )
+            console.log( 'Fermeture du Canal %s', channel, res? 'OK' : 'Echec' )
+        }
+
+        //Si c'est un client qui est coupé
+        var client = connections.get( connection.id ).client
+        if ( client ) {
+            let subscriptions = subscribers.get( client ).subscriptions
+            subscriptions.forEach( s => channels.get( s ).subscribers.remove( client ) )
+            let res = subscribers.delete( client)            
+            console.log( 'Déconnexion de l\'abonné %s', client, res? 'OK' : 'Echec' )
+        }
+
     } )
 } )

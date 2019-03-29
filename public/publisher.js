@@ -15,12 +15,14 @@ customElements.define( 'push-publisher', class extends HTMLElement {
                 <section>
                     <div id="output"></div>
                 </section>
+                <button class="x" title="Fermer">X</button>
             `
         
         var channel = shadow.querySelector( '#channel' )
         var register_channel = shadow.querySelector( '#register_channel' )
         var message_editor = shadow.querySelector( '#message_editor' )
         var send_message = shadow.querySelector( '#send_message' )
+        var close = shadow.querySelector( 'button.x' )
         
         register_channel.onclick = create_channel
         send_message.onclick = push_message
@@ -28,7 +30,7 @@ customElements.define( 'push-publisher', class extends HTMLElement {
         var client 
 
         function create_channel() {
-            console.info( 'create %s', channel.value )
+            console.info( 'création du canal %s', channel.value )
             client = new WebSocket( 'ws://localhost:8080/' )
             
             client.onerror = function() {
@@ -68,6 +70,12 @@ customElements.define( 'push-publisher', class extends HTMLElement {
             }
 
             client.send( JSON.stringify( message ) )
+        }
+
+        close.onclick = () => {
+            console.log( "fermer le canal" )
+            client.close() 
+            this.parentElement.removeChild( this )
         }
     }
 })
