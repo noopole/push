@@ -128,7 +128,7 @@ wsServer.on( 'request', function(request) {
         var client = connections.get( connection.id ).client
         if ( client ) {
             let subscriptions = subscribers.get( client ).subscriptions
-            subscriptions.forEach( s => channels.get( s ).subscribers.remove( client ) )
+            subscriptions.forEach( s => channels.get( s ).subscribers.delete( client ) )
             let res = subscribers.delete( client)            
             console.log( 'Déconnexion de l\'abonné %s', client, res? 'OK' : 'Echec' )
         }
