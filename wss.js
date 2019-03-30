@@ -52,19 +52,23 @@ wsServer.on( 'request', function(request) {
     connections.set( connection.id, { connection: connection } )
     console.log( ( new Date().toLocaleTimeString() ) + ' Connexion acceptée. Id=%i', connection.id )
 
-    connection.on( 'message', function(message) {
-        if (message.type === 'utf8') {
+    connection.on( 'message', function( message ) {
+        if ( message.type === 'utf8' ) {
             var command = JSON.parse( message.utf8Data )
             console.log ( command )
             switch ( command.action ) {
 
                 case 'create_channel':
                     console.log( 'Cnx %i : Création du canal %s', connection.id, command.channel )
-                    channels.set( command.channel, { connection: connection.id, subscribers: new Set } )
-                    connections.get( connection.id ).channel = command.channel
-                    subscribers.forEach( subscriber => {
-                        connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add_channel', channel: command.channel } ) ) 
-                    } )
+                    if ( !channels.has( command.channel ) ) {
+                        channels.set( command.channel, { connection: connection.id, subscribers: new Set } )
+                        connections.get( connection.id ).channel = command.channel
+                        subscribers.forEach( subscriber => {
+                            connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add_channel', channel: command.channel } ) ) 
+                        } )
+                    }
+                    else 
+                        connection.send( JSON.stringify( { action: 'error', error: `Channel #${ command.channel } already exists` } ) )
                     break
 
                 case 'push':
@@ -102,22 +106,26 @@ wsServer.on( 'request', function(request) {
 
                 case 'client': 
                     name = command.name || 'Anonyme_' + connection.id
-                    console.log( 'Abonné %s connecté', name )
-                    connections.get( connection.id ).client = name
-                    //Indiquer au client tous les canaux déjà existants
-                    for ( let ch of channels.keys() ) {
-                        connection.send( JSON.stringify( { action: 'add_channel', channel: ch } ) )
+                    if ( ! subscribers.has( name ) ) {
+                        console.log( 'Abonné %s connecté', name )
+                        connections.get( connection.id ).client = name
+                        //Indiquer au client tous les canaux déjà existants
+                        for ( let ch of channels.keys() ) {
+                            connection.send( JSON.stringify( { action: 'add_channel', channel: ch } ) )
+                        }
+                        //Indiquer au client tous les utilisateurs déjà connectés
+                        for ( let user of subscribers.keys() ) {
+                            connection.send( JSON.stringify( { action: 'add_user', name: user } ) )
+                        } 
+                        //Prévenir tous les utilisateurs du nouvel arrivant
+                        subscribers.forEach( subscriber => {
+                            connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add_user', name: name } ) ) 
+                        } )
+                        //Ajouter l'utilisateur à la liste des utilisateurs
+                        subscribers.set( name, { subscriptions: new Set, connection: connection.id } )
                     }
-                    //Indiquer au client tous les utilisateurs déjà connectés
-                    for ( let user of subscribers.keys() ) {
-                        connection.send( JSON.stringify( { action: 'add_user', name: user } ) )
-                    } 
-                    //Prévenir tous les utilisateurs du nouvel arrivant
-                    subscribers.forEach( subscriber => {
-                        connections.get( subscriber.connection ).connection.send( JSON.stringify( { action: 'add_user', name: name } ) ) 
-                    } )
-                    //Ajouter l'utilisateur à la liste des utilisateurs
-                    subscribers.set( name, { subscriptions: new Set, connection: connection.id } )
+                    else
+                        connection.send( JSON.stringify( { action: 'error', error: `User @${ command.channel } already exists` } ) )
 
                     break
 

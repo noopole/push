@@ -1,42 +1,14 @@
-<!--script>
-var client = new WebSocket('ws://localhost:8080/', 'echo-protocol');
-
-client.onerror = function() {
-    console.log('Connection Error');
-};
-
-client.onopen = function() {
-    console.log('WebSocket Client Connected');
-
-    function sendNumber() {
-        if (client.readyState === client.OPEN) {
-            var number = Math.round(Math.random() * 0xFFFFFF);
-            client.send(number.toString());
-            setTimeout(sendNumber, 1000);
-        }
-    }
-    sendNumber();
-};
-
-client.onclose = function() {
-    console.log('echo-protocol Client Closed');
-};
-
-client.onmessage = function(e) {
-    if (typeof e.data === 'string') {
-        console.log("Reçu : '" + e.data + "'");
-    }
-};
-</script-->
 <html>
 <head>
-    <script src="publisher.js"></script>
-    <script src="client.js"></script>
+    <script src="ws-client.js"></script>
+    <script src="ws-publisher.js"></script>
 <body>
-    <button id=addPublisher>Ajouter un canal</button>
-    <button id=addClient>Ajouter un client</button>
+    <button id=addPubWSC>Ajouter un canal WSC</button>
+    <button id=addWSC>Ajouter un client WSC</button>
     <script>
-        addPublisher.onclick = () => document.body.appendChild(document.createElement( 'push-publisher' ) )
-        addClient.onclick = () => document.body.appendChild(document.createElement( 'push-client' ) )
+        addWSC.onclick = () => document.body.appendChild(document.createElement( 'ws-client' ) )
+        addPubWSC.onclick = () => document.body.appendChild(document.createElement( 'ws-publisher' ) )
     </script>
+    <ws-client url="//localhost:8080"></ws-client>
+    <ws-publisher url="//localhost:8080"></ws-publisher>
  

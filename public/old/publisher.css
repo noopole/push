@@ -1,0 +1,23 @@
+:host { 
+    display: block ;
+    border: 1px solid gray ;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif ;
+    margin: 10px ;
+    padding: 10px ;
+    position: relative ;
+}
+
+h1 { font-size: 15px ; margin: 0 ; padding:0 ; }
+
+
+button.x {
+    border: 1px solid gray ;
+    background-color: lightgrey ;
+    height: 20px ;
+    display: inline-block ;
+    position: absolute ;
+    top: 10px ;
+    right: 10px ;
+    text-align: center ;
+    cursor: pointer ;
+}

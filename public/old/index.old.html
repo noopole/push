@@ -1,0 +1,20 @@
+<html>
+<head>
+    <script src="publisher.js"></script>
+    <script src="client.js"></script>
+    <script src="ws-client.js"></script>
+    <script src="ws-subscriber.js"></script>
+<body>
+    <button id=addPublisher>Ajouter un canal</button>
+    <button id=addPubWSC>Ajouter un canal WSC</button>
+    <button id=addClient>Ajouter un client</button>
+    <button id=addWSC>Ajouter un client WSC</button>
+    <script>
+        addPublisher.onclick = () => document.body.appendChild(document.createElement( 'push-publisher' ) )
+        addClient.onclick = () => document.body.appendChild(document.createElement( 'push-client' ) )
+        addWSC.onclick = () => document.body.appendChild(document.createElement( 'ws-client' ) )
+        addPubWSC.onclick = () => document.body.appendChild(document.createElement( 'ws-publisher' ) )
+    </script>
+    <ws-client url="//s5:8080"></ws-client>
+    <ws-publisher url="//s5:8080"></ws-publisher>
+ 

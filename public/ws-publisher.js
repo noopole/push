@@ -1,4 +1,4 @@
-customElements.define( 'push-publisher', class extends HTMLElement {
+customElements.define( 'ws-publisher', class extends HTMLElement {
     constructor() {
         super()
         var shadow = this.attachShadow( { mode: 'open' } )
@@ -7,7 +7,7 @@ customElements.define( 'push-publisher', class extends HTMLElement {
                 <h1>Canal de publication
 
                 <section>
-                    <input id="channel" placeholder="Nom de canal"><button id="register_channel">Créer</button>
+                    <input id="channel" placeholder="Nom de canal">
                 </section>
                 <section>
                     <input id="message_editor" placeholder="Message"><button id="send_message">Diffuser</button>
@@ -19,44 +19,36 @@ customElements.define( 'push-publisher', class extends HTMLElement {
             `
         
         var channel = shadow.querySelector( '#channel' )
-        var register_channel = shadow.querySelector( '#register_channel' )
+        setTimeout( () => channel.focus(), 100)
         var message_editor = shadow.querySelector( '#message_editor' )
         var send_message = shadow.querySelector( '#send_message' )
         var close = shadow.querySelector( 'button.x' )
         
-        register_channel.onclick = create_channel
-        send_message.onclick = push_message
+        channel.onchange = create_channel
+        message_editor.onchange = push_message
 
-        var client 
+        var worker = new Worker( 'wsi.js' ) 
 
         function create_channel() {
             console.info( 'création du canal %s', channel.value )
-            client = new WebSocket( 'ws://localhost:8080/' )
-            
-            client.onerror = function() {
-                console.log( 'Erreur WebSocket' )
-            }
-            
-            client.onopen = function() {
-                console.log( 'Client WebSocket connecté' )
-            
-                var message = { 
-                    action: 'create_channel',
-                    channel: channel.value
-                } 
+            let url = this.getAttribute( 'url' )
+            worker.postMessage( { action: 'connect', url: url } )            
+            channel.disabled = true
+        }
 
-                client.send( JSON.stringify( message ) )
-                register_channel.style.visibility = "hidden"
-            }
-            
-            client.onclose = function() {
-                console.log('Connexion fermée')
-            }
-            
-            client.onmessage = function( e ) {
-                if ( typeof e.data === 'string' ) {
-                    console.info( 'Reçu : %o', JSON.parse( e.data ) )
-                }
+        worker.onmessage = e => {
+            var message = e.data 
+            console.info( 'Message reçu par client',  message )
+            switch ( message.action ) {
+                case 'connection':
+                    console.info( 'Connexion : %i', message.state )
+                    if ( message.state === 1 ) {
+                        worker.postMessage( { action: 'create_channel', channel: channel.value } )
+                        message_editor.focus()
+                    }
+                    else
+                        channel.disabled = false
+                    break        
             }
         }
 
@@ -69,12 +61,14 @@ customElements.define( 'push-publisher', class extends HTMLElement {
                 message: message_editor.value
             }
 
-            client.send( JSON.stringify( message ) )
+            worker.postMessage( message )
+            message_editor.value = ''
+            message_editor.focus()
         }
 
         close.onclick = () => {
             console.log( "fermer le canal" )
-            client.close() 
+            worker.postMessage( { action: 'close' } )
             this.parentElement.removeChild( this )
         }
     }
