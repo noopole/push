@@ -31,13 +31,13 @@ Chargement du script
 
 ### Liste des messages à envoyer
 
-    { action: 'connect', url: '//localhost:8080' }  // connexion
-    { action: 'client', name: 'Toto' }              // utilisateur
-    { action: 'create_channel', channel: 'Canal1' } // canal
-    { action: 'push', channel; 'Canal1', message: 'Hellow World' }     // diffusion d'un message
-    { action: 'subscribe', channel: 'Canal1' }      // abonnement au canal
-    { action: 'unsubscribe', channel: 'Canal1' }    // désabonnement du canal
-    { action: 'close' }                             // fermture de la connexion
+    { action: 'connect', url: '//localhost:8080' }                  // connexion
+    { action: 'client', name: 'Toto' }                              // utilisateur
+    { action: 'create_channel', channel: 'Canal1' }                 // canal
+    { action: 'push', channel; 'Canal1', message: 'Hellow World' }  // diffusion d'un message
+    { action: 'subscribe', channel: 'Canal1' }                      // abonnement au canal
+    { action: 'unsubscribe', channel: 'Canal1' }                    // désabonnement du canal
+    { action: 'close' }                                             // fermture de la connexion
 
 
 ### Réception d'un message
@@ -52,7 +52,7 @@ Chargement du script
                 break 
 
             case 'write': 
-                console.log( message )
+                console.log( channel, message )
                 break 
 
             case 'add_user':
