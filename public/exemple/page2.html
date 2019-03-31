@@ -1,0 +1,54 @@
+<head>
+    <script src="session.js"></script>
+
+<body>
+    <div id="info"></div>
+
+    <script>
+        //Récupération des données de session
+        var s = new Session()
+        var channels = s.channels 
+        console.info( channels )
+
+        //Y a-t-il des canaux à l'écoute
+        if ( channels.length > 0 ) {
+            //Oui => Connexion au serveur Web Socket
+            let worker = new Worker( '/wsi.js' )
+            worker.postMessage( { action: 'connect' } )
+            worker.onmessage = e => {
+                let { action, state, message, channel } = e.data
+                
+                switch( action ) {
+
+                    case 'connection':
+                        if ( state === 1 )
+                            //Connexion OK: identification de l'abonné
+                            worker.postMessage( { action: 'client', name: s.name } ) 
+                            //abonnement aux canaux
+                            channels.forEach( ch => {
+                                renderMessage( ch, s.last_message( ch ) )
+                                worker.postMessage( { action: 'subscribe', channel: ch } ) 
+                            } )
+                        break
+
+                    case 'write':
+                        renderMessage( channel, message )
+                        if ( 'terminée' === message )  {
+                            console.info( 'Tâche terminée' )
+                            worker.postMessage( { action: 'unsubscribe', channel: channel } )
+                            s.close_channel( channel )
+                        }
+                        break                        
+                }
+            } 
+        }       
+        
+        function renderMessage( channel, message ) {
+            let div = document.createElement( 'div' )
+            s.set_last_message( channel, message )
+            div.innerHTML = `#${channel} : ${message}`
+            info.appendChild( div )
+
+        }
+
+    </script>

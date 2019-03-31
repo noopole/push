@@ -1,0 +1,77 @@
+<head>
+    <script src="session.js"></script>
+
+<body>
+    <h1>Exéction d'une tâche différée</h1>
+
+    <div>
+        <a href="page2.html">Page Suivante</a>
+    </div>
+    <label>
+        <span>Durée de la tâche (en secondes)</span>
+        <input id="timer" type="number" value=5>
+        <button id="launch">Lancher la tâche</button>
+    </label>
+
+    <div id="info"></div>
+
+    <script>
+        launch.onclick = () => {
+            console.log( 'Lancer la tâche' )
+            fetch( `http://localhost/api/work/${timer.value}` )
+                .then( res => res.json() )
+                .then( wait )
+        }
+
+
+        var s = new Session()
+        s.name = 'toto'
+
+        function wait( o ) {
+            console.info( o )
+            renderMessage( `Démarrage de la tâche "${o.task}". Durée d'exécution estimée : ${o.duration} s.`)
+
+            s.add_channel( o.channel )
+
+            var worker = new Worker( '/wsi.js' )
+            worker.postMessage( {action: 'connect', url: '//localhost:8080' } )
+            worker.onmessage = ev => {
+                let { action, channel, write, state, message } = ev.data
+                switch( action ) {
+                    case 'connection': 
+                        if ( state === 1 )
+                            worker.postMessage( { action: 'client', name: s.name } )
+                        else
+                            console.error( 'Erreur de connexion' )
+                        break
+                    
+                    case 'add_channel':
+                        if ( channel === o.task )
+                            worker.postMessage( { action: 'subscribe', channel: o.channel } )
+                        break
+
+                    case 'write':
+                        renderMessage( o.channel, message )
+                        if ( 'terminée' === message )  {
+                            console.info( 'Tâche terminée' )
+                            worker.postMessage( { action: 'unsubscribe', channel: o.channel } )
+                            worker.postMessage( { action: 'close' } )
+                            s.close_channel( o.task )
+                        }
+                        break
+                }
+            }
+
+        }
+                
+        function renderMessage( m1, m2) {
+            let div = document.createElement( 'div' )
+            if ( m2 ) {
+                s.set_last_message( m1, m2 )
+                div.innerHTML = `#${m1} : ${m2}`
+            }
+            else
+                div.innerHTML = "***" + m1
+            info.appendChild( div )
+        }
+    </script>

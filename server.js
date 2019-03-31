@@ -8,4 +8,6 @@ app.use( morgan( 'dev' ) )
 
 app.use( express.static( 'public') )
 
+app.use( '/api', require( './api' ) ) 
+
 app.listen( process.env.PORT || 80 )

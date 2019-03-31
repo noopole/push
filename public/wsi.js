@@ -19,7 +19,7 @@ class SoConn {
     connected( socket ) {        
         //Message reçus
         socket.onmessage = ev => {
-            console.info( 'Message reçu par WebSocket' )
+            console.debug( 'Message reçu par WebSocket' )
             if ( typeof ev.data === 'string' ) {
                 var message = JSON.parse( ev.data )
                 console.debug( message )
