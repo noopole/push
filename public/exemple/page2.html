@@ -26,7 +26,8 @@
                             worker.postMessage( { action: 'client', name: s.name } ) 
                             //abonnement aux canaux
                             channels.forEach( ch => {
-                                renderMessage( ch, s.last_message( ch ) )
+                                let last_message = s.last_message( ch )
+                                renderMessage( ch, last_message )
                                 worker.postMessage( { action: 'subscribe', channel: ch } ) 
                             } )
                         break
@@ -45,10 +46,9 @@
         
         function renderMessage( channel, message ) {
             let div = document.createElement( 'div' )
-            s.set_last_message( channel, message )
             div.innerHTML = `#${channel} : ${message}`
             info.appendChild( div )
-
+            s.set_last_message( channel, message )
         }
 
     </script>

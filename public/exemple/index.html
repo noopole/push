@@ -24,54 +24,55 @@
         }
 
 
+        //Persistence de session WebSocket
         var s = new Session()
         s.name = 'toto'
 
+
+        //Connexion à la Web Socket
+        var worker = new Worker( '/wsi.js' )
+        worker.postMessage( {action: 'connect', url: '//localhost:8080' } )
+        worker.onmessage = ev => {
+            let { action, channel, write, state, message } = ev.data
+            switch( action ) {
+                 case 'connection': 
+                    if ( state === 1 )
+                        worker.postMessage( { action: 'client', name: s.name } )
+                    else
+                        console.error( 'Erreur de connexion' )
+                    break
+
+                case 'write':
+                    s.set_last_message( channel, message )
+                    renderMessage( channel, message )
+                    if ( 'terminée' === message )  {
+                        console.info( 'Tâche terminée' )
+                        s.close_channel( channel )
+                        worker.postMessage( { action: 'unsubscribe', channel: channel } )
+                    }
+                    break
+            }
+        }
+
+
+        //Abonnement au canal lié à la tâche lancée
         function wait( o ) {
             console.info( o )
             renderMessage( `Démarrage de la tâche "${o.task}". Durée d'exécution estimée : ${o.duration} s.`)
 
             s.add_channel( o.channel )
-
-            var worker = new Worker( '/wsi.js' )
-            worker.postMessage( {action: 'connect', url: '//localhost:8080' } )
-            worker.onmessage = ev => {
-                let { action, channel, write, state, message } = ev.data
-                switch( action ) {
-                    case 'connection': 
-                        if ( state === 1 )
-                            worker.postMessage( { action: 'client', name: s.name } )
-                        else
-                            console.error( 'Erreur de connexion' )
-                        break
-                    
-                    case 'add_channel':
-                        if ( channel === o.task )
-                            worker.postMessage( { action: 'subscribe', channel: o.channel } )
-                        break
-
-                    case 'write':
-                        renderMessage( o.channel, message )
-                        if ( 'terminée' === message )  {
-                            console.info( 'Tâche terminée' )
-                            worker.postMessage( { action: 'unsubscribe', channel: o.channel } )
-                            worker.postMessage( { action: 'close' } )
-                            s.close_channel( o.task )
-                        }
-                        break
-                }
-            }
-
+            worker.postMessage( { action: 'subscribe', channel: o.channel } )
         }
-                
+
+
+        //Affichage des messages dans la page        
         function renderMessage( m1, m2) {
             let div = document.createElement( 'div' )
             if ( m2 ) {
-                s.set_last_message( m1, m2 )
                 div.innerHTML = `#${m1} : ${m2}`
             }
             else
-                div.innerHTML = "***" + m1
+                div.innerHTML = "*** " + m1
             info.appendChild( div )
         }
     </script>
