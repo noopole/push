@@ -41,14 +41,15 @@ router.get( '/work/:timer', ( req, res ) => {
     
 
     let interval = setInterval( () => {
-        console.log( 'Tâche terminée') 
+        let time = new Date
+        console.log( 'Boucle', timer, time.toLocaleTimeString() + '.' + Math.round( time.getMilliseconds() / 10 ) ) 
         if ( --timer === 0 ) {
             clearInterval( interval )
             client.send( JSON.stringify( { action: 'push', channel: task, message: 'terminée' } ) )
             client.send( JSON.stringify( { action: 'remove_channel', channel: task } ) )      
         }
         else
-            client.send( JSON.stringify( { action: 'push', channel: task, message: `encore ${timer} secondes` } ) )
+            client.send( JSON.stringify( { action: 'push', channel: task, message: `encore ${timer} seconde${timer > 1 ? "s" : ""}` } ) )
     }, 1000 )
 
 
